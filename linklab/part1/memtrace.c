@@ -38,15 +38,16 @@ static item *list = NULL;
 __attribute__((constructor))
 void init(void)
 {
-  char *error;
+	char *error;
 
-  LOG_START();
+	LOG_START();
 
-  // initialize a new list to keep track of all memory (de-)allocations
-  // (not needed for part 1)
-  list = new_list();
+	// initialize a new list to keep track of all memory (de-)allocations
+	// (not needed for part 1)
+	list = new_list();
 
-  // ...
+	// ...
+
 }
 
 //
@@ -55,14 +56,14 @@ void init(void)
 __attribute__((destructor))
 void fini(void)
 {
-  // ...
+	// ...
 
-  LOG_STATISTICS(0L, 0L, 0L);
+	LOG_STATISTICS(0L, 0L, 0L);
 
-  LOG_STOP();
+	LOG_STOP();
 
-  // free list (not needed for part 1)
-  free_list(list);
+	// free list (not needed for part 1)
+	free_list(list);
 }
 
 // ...
