@@ -112,16 +112,14 @@ void *malloc(size_t size)
 
 void free(void *ptr)
 {
-	size_t size;
-
 	LOG_FREE(ptr);
 
-	size = find(list, ptr)->size;
+	item *i = find(list, ptr);
+	if (i && i->cnt)
+		n_freeb += i->size;
 
 	freep(ptr);
 	dealloc(list, ptr);
-
-	n_freeb += size;
 }
 
 void *calloc(size_t nmemb, size_t size)
