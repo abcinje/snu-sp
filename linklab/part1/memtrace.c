@@ -101,11 +101,8 @@ void *malloc(size_t size)
 
 void free(void *ptr)
 {
-	if (!ptr)
-		return;
-
-	freep(ptr);
 	LOG_FREE(ptr);
+	freep(ptr);
 }
 
 void *calloc(size_t nmemb, size_t size)

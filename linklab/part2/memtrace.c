@@ -114,8 +114,7 @@ void free(void *ptr)
 {
 	size_t size;
 
-	if (!ptr)
-		return;
+	LOG_FREE(ptr);
 
 	size = find(list, ptr)->size;
 
@@ -123,7 +122,6 @@ void free(void *ptr)
 	dealloc(list, ptr);
 
 	n_freeb += size;
-	LOG_FREE(ptr);
 }
 
 void *calloc(size_t nmemb, size_t size)
