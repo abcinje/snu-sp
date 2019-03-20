@@ -81,7 +81,7 @@ item *alloc(item *list, void *ptr, size_t size)
     if (cur->ptr == i->ptr) {
       // existing block -> update size & reference counter
       cur->size = i->size;
-      cur->cnt++;
+      cur->cnt = 1;
       freep(i);
       i = cur;
     } else {
@@ -107,7 +107,7 @@ item *dealloc(item *list, void *ptr)
   }
 
   // decrement reference count if found
-  if (cur != NULL) cur->cnt--;
+  if (cur != NULL) cur->cnt = 0;
 
   return cur;
 }
