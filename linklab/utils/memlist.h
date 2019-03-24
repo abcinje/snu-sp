@@ -15,12 +15,12 @@
 //   next       pointer to next item in linked list
 //
 typedef struct __item {
-  void *ptr;
-  size_t size;
-  int cnt;
-  char fname[32];
-  unsigned long long ofs;
-  struct __item *next;
+	void *ptr;
+	size_t size;
+	int cnt;
+	char fname[32];
+	unsigned long long ofs;
+	struct __item *next;
 } item;
 
 
