@@ -138,3 +138,21 @@ void dump_list(item *list)
 		i = i->next;
 	}
 }
+
+int live_blocks(item *list)
+{
+	int count = 0;
+
+	if (list == NULL)
+		return -1;
+
+	list = list->next;
+	while (list != NULL) {
+		if (list->cnt)
+			count++;
+		list = list->next;
+	}
+
+	return count;
+}
+

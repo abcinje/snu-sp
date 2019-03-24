@@ -82,4 +82,12 @@ item *find(item *list, void *ptr);
 //
 void dump_list(item *list);
 
+//
+// count live blocks in the list
+//
+//   list       pointer to list
+//
+int live_blocks(item *list);
+
+
 #endif

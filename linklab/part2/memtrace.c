@@ -80,12 +80,13 @@ void fini(void)
 	LOG_STATISTICS(n_allocb,
 		n_allocb / (n_malloc+n_calloc+n_realloc), n_freeb);
 
-	LOG_NONFREED_START();
-	if (list != NULL) {
+	if (live_blocks(list) > 0) {
+		LOG_NONFREED_START();
 		item *i = list->next;
 		while (i != NULL) {
 			if (i->cnt)
-				LOG_BLOCK(i->ptr, i->size, i->cnt, i->fname, i->ofs);
+				LOG_BLOCK(i->ptr, i->size,
+						i->cnt, i->fname, i->ofs);
 			i = i->next;
 		}
 	}
