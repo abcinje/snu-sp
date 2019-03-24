@@ -141,6 +141,14 @@ void *calloc(size_t nmemb, size_t size)
 
 void *realloc(void *ptr, size_t size)
 {
+	item *i = find(list, ptr);
+	if (i && i->cnt)
+		n_freeb += i->size;
+	else {
+		LOG_ILL_FREE();
+		ptr = NULL;
+	}
+
 	char *new_ptr = reallocp(ptr, size);
 	dealloc(list, ptr);
 	alloc(list, new_ptr, size);
