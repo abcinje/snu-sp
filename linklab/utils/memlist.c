@@ -79,9 +79,11 @@ item *alloc(item *list, void *ptr, size_t size)
 		prev->next = i;
 	} else {
 		if (cur->ptr == i->ptr) {
-			// existing block -> update size & reference counter
+			// existing block -> update info
 			cur->size = i->size;
 			cur->cnt = 1;
+			strncpy(cur->fname, i->fname, sizeof(i->fname));
+			cur->ofs = i->ofs;
 			freep(i);
 			i = cur;
 		} else {
