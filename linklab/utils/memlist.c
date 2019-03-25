@@ -57,7 +57,7 @@ item *alloc(item *list, void *ptr, size_t size)
 	item *prev, *cur, *i;
 	int res;
 
-	if (list == NULL) return NULL;
+	if (!list || !ptr) return NULL;
 
 	i = (item*)callocp(1, sizeof(item));
 	i->ptr = ptr;
