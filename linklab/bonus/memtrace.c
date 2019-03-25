@@ -142,13 +142,21 @@ void *calloc(size_t nmemb, size_t size)
 
 void *realloc(void *ptr, size_t size)
 {
+	char *old_ptr = ptr;
+
 	item *i = find(list, ptr);
-	if (i && i->cnt)
-		n_freeb += i->size;
-	else {
-		LOG_ILL_FREE();
+	int errno = 0;
+
+	if (!i) {
+		errno = 1;
 		ptr = NULL;
 	}
+	else if (!i->cnt) {
+		errno = 2;
+		ptr = NULL;
+	}
+	else
+		n_freeb += i->size;
 
 	char *new_ptr = reallocp(ptr, size);
 	dealloc(list, ptr);
@@ -156,7 +164,12 @@ void *realloc(void *ptr, size_t size)
 
 	n_realloc++;
 	n_allocb += size;
-	LOG_REALLOC(ptr, size, new_ptr);
+	LOG_REALLOC(old_ptr, size, new_ptr);
+
+	if (errno == 1)
+		LOG_ILL_FREE();
+	else if (errno == 2)
+		LOG_DOUBLE_FREE();
 
 	return new_ptr;
 }
