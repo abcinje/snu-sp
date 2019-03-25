@@ -148,8 +148,10 @@ void *realloc(void *ptr, size_t size)
 	int errno = 0;
 
 	if (!i) {
-		errno = 1;
-		ptr = NULL;
+		if (old_ptr != NULL) {
+			errno = 1;
+			ptr = NULL;
+		}
 	}
 	else if (!i->cnt) {
 		errno = 2;
