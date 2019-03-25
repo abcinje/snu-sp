@@ -129,7 +129,7 @@ void *calloc(size_t nmemb, size_t size)
 	alloc(list, ptr, nmemb * size);
 
 	n_calloc++;
-	n_allocb += size;
+	n_allocb += nmemb * size;
 	LOG_CALLOC(nmemb, size, ptr);
 
 	return ptr;
