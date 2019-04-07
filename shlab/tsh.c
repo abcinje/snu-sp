@@ -83,7 +83,11 @@ void usage(void);
 void unix_error(char *msg);
 void app_error(char *msg);
 typedef void handler_t(int);
+
+pid_t Fork(void);
+void Kill(pid_t pid, int sig);
 handler_t *Signal(int signum, handler_t *handler);
+void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 
 /*
  * main - The shell's main routine 
@@ -130,7 +134,6 @@ int main(int argc, char **argv)
 
 	/* Execute the shell's read/eval loop */
 	while (1) {
-
 		/* Read command line */
 		if (emit_prompt) {
 			printf("%s", prompt);
@@ -165,7 +168,41 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
-	return;
+	char *argv[MAXARGS];
+	char buf[MAXLINE];
+	int bg;
+	sigset_t mask;
+	pid_t pid;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGCHLD);
+
+	strncpy(buf, cmdline, MAXLINE);
+	bg = parseline(buf, argv);
+	if (argv[0] == NULL)
+		return;
+
+	if (!builtin_cmd(argv)) {
+		if ((pid = Fork()) == 0) {
+			setpgid(0, 0);
+			Sigprocmask(SIG_UNBLOCK, &mask, NULL);
+			if (execve(argv[0], argv, environ) < 0) {
+				printf("%s: Command not found\n", argv[0]);
+				exit(0);
+			}
+		}
+
+		else {
+			if (!bg)
+				addjob(jobs, pid, FG, cmdline);
+			else {
+				addjob(jobs, pid, BG, cmdline);
+				printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+			}
+			Sigprocmask(SIG_UNBLOCK, &mask, NULL);
+			waitfg(pid);
+		}
+	}
 }
 
 /* 
@@ -231,7 +268,21 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-	return 0;     /* not a builtin command */
+	if (!strcmp(argv[0], "quit"))
+		exit(0);
+	
+	else if (!strcmp(argv[0], "fg") || !strcmp(argv[0], "bg")) {
+		do_bgfg(argv);
+		return 1;
+	}
+
+	else if (!strcmp(argv[0], "jobs")) {
+		listjobs(jobs);
+		return 1;
+	}
+
+	else
+		return 0; /* not a builtin command */
 }
 
 /* 
@@ -239,7 +290,8 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-	return;
+	if (argv[1] == NULL)
+		printf("%s command requires PID or %%jobid argument\n", argv[0]);
 }
 
 /* 
@@ -247,7 +299,11 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-	return;
+	struct job_t *job = getjobpid(jobs, pid);
+
+	if (job)
+		while (job->state == FG)
+			sleep(1);
 }
 
 /*****************
@@ -263,7 +319,28 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-	return;
+	pid_t pid;
+	int wstatus;
+
+	while ((pid = waitpid(-1, &wstatus, WNOHANG | WUNTRACED)) > 0) {
+		if (WIFEXITED(wstatus))
+			deletejob(jobs, pid);
+
+		else if (WIFSIGNALED(wstatus)) {
+			printf("Job [%d] (%d) terminated by signal %d\n",
+					pid2jid(pid), pid, WTERMSIG(wstatus));
+			deletejob(jobs, pid);
+		}
+
+		else if (WIFSTOPPED(wstatus)) {
+			printf("Job [%d] (%d) stopped by signal %d\n",
+					pid2jid(pid), pid, WSTOPSIG(wstatus));
+			getjobpid(jobs, pid)->state = ST;
+		}
+	}
+
+	if (pid < 0 && errno != ECHILD)
+		unix_error("waitpid error");
 }
 
 /* 
@@ -273,7 +350,10 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-	return;
+	pid_t pid = fgpid(jobs);
+
+	if (pid)
+		Kill(-pid, SIGINT);
 }
 
 /*
@@ -283,7 +363,10 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-	return;
+	pid_t pid = fgpid(jobs);
+
+	if (pid)
+		Kill(-pid, SIGTSTP);
 }
 
 /*********************
@@ -479,7 +562,28 @@ void app_error(char *msg)
 }
 
 /*
- * Signal - wrapper for the sigaction function
+ * Fork - wrapper for the fork system call
+ */
+pid_t Fork(void)
+{
+	pid_t pid = fork();
+	if (pid < 0)
+		unix_error("Fork error");
+
+	return pid;
+}
+
+/*
+ * Kill - wrapper for the kill system call
+ */
+void Kill(pid_t pid, int sig)
+{
+	if (kill(pid, sig))
+		unix_error("Kill error");
+}
+
+/*
+ * Signal - wrapper for the sigaction system call
  */
 handler_t *Signal(int signum, handler_t *handler) 
 {
@@ -492,6 +596,15 @@ handler_t *Signal(int signum, handler_t *handler)
 	if (sigaction(signum, &action, &old_action) < 0)
 		unix_error("Signal error");
 	return (old_action.sa_handler);
+}
+
+/*
+ * Sigprocmask - wrapper for the sigprocmask system call
+ */
+void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset)
+{
+	if (sigprocmask(how, set, oldset))
+		unix_error("Sigprocmask error");
 }
 
 /*
