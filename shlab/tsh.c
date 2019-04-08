@@ -85,9 +85,12 @@ void app_error(char *msg);
 typedef void handler_t(int);
 
 pid_t Fork(void);
+void Setpgid(pid_t pid, pid_t pgid);
 void Kill(pid_t pid, int sig);
 handler_t *Signal(int signum, handler_t *handler);
 void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+void Sigemptyset(sigset_t *set);
+void Sigaddset(sigset_t *set, int signum);
 
 /*
  * main - The shell's main routine 
@@ -174,8 +177,8 @@ void eval(char *cmdline)
 	sigset_t mask;
 	pid_t pid;
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGCHLD);
+	Sigemptyset(&mask);
+	Sigaddset(&mask, SIGCHLD);
 
 	strncpy(buf, cmdline, MAXLINE);
 	bg = parseline(buf, argv);
@@ -183,8 +186,10 @@ void eval(char *cmdline)
 		return;
 
 	if (!builtin_cmd(argv)) {
+		Sigprocmask(SIG_BLOCK, &mask, NULL);
+
 		if ((pid = Fork()) == 0) {
-			setpgid(0, 0);
+			Setpgid(0, 0);
 			Sigprocmask(SIG_UNBLOCK, &mask, NULL);
 			if (execve(argv[0], argv, environ) < 0) {
 				printf("%s: Command not found\n", argv[0]);
@@ -321,13 +326,13 @@ void do_bgfg(char **argv)
 	if (job->state == ST) {
 		if (!strcmp(argv[0], "fg")) {
 			job->state = FG;
-			kill(-job->pid, SIGCONT);
+			Kill(-job->pid, SIGCONT);
 			waitfg(job->pid);
 		}
 		else {
 			job->state = BG;
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
-			kill(-job->pid, SIGCONT);
+			Kill(-job->pid, SIGCONT);
 		}
 	}
 
@@ -620,6 +625,15 @@ pid_t Fork(void)
 }
 
 /*
+ * Setpgid - wrapper for the setpgid system call
+ */
+void Setpgid(pid_t pid, pid_t pgid)
+{
+	if (setpgid(pid, pgid))
+		unix_error("Setpgid error");
+}
+
+/*
  * Kill - wrapper for the kill system call
  */
 void Kill(pid_t pid, int sig)
@@ -651,6 +665,24 @@ void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset)
 {
 	if (sigprocmask(how, set, oldset))
 		unix_error("Sigprocmask error");
+}
+
+/*
+ * Sigemptyset - wrapper for the sigemptyset function
+ */
+void Sigemptyset(sigset_t *set)
+{
+	if (sigemptyset(set))
+		unix_error("Sigemptyset error");
+}
+
+/*
+ * Sigaddset - wrapper for the sigaddset function
+ */
+void Sigaddset(sigset_t *set, int signum)
+{
+	if (sigaddset(set, signum))
+		unix_error("Sigaddset error");
 }
 
 /*
