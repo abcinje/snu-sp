@@ -290,9 +290,55 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-	if (argv[1] == NULL)
+	char *arg = argv[1];
+	int id;
+	struct job_t *job;
+
+	if (arg == NULL) {
 		printf("%s command requires PID or %%jobid argument\n", argv[0]);
+		return;
+	}
+
+	if (arg[0] == '%' && (id = atoi(arg+1))) {  /* jid */
+		if (!(job = getjobjid(jobs, id))) {
+			printf("%s: No such job\n", arg);
+			return;
+		}
+	}
+
+	else if (arg[0] != '%' && (id = atoi(arg))) { /* pid */
+		if (!(job = getjobpid(jobs, id))) {
+			printf("(%s): No such process\n", arg);
+			return;
+		}
+	}
+
+	else {
+		printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+		return;
+	}
+
+	if (job->state == ST) {
+		if (!strcmp(argv[0], "fg")) {
+			job->state = FG;
+			kill(-job->pid, SIGCONT);
+			waitfg(job->pid);
+		}
+		else {
+			job->state = BG;
+			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+			kill(-job->pid, SIGCONT);
+		}
+	}
+
+	else if (job->state == BG) {
+		if (!strcmp(argv[0], "fg")) {
+			job->state = FG;
+			waitfg(job->pid);
+		}
+	}
 }
+
 
 /* 
  * waitfg - Block until process pid is no longer the foreground process
