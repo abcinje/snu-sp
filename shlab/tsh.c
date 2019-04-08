@@ -1,7 +1,7 @@
 /* 
  * tsh - A tiny shell program with job control
  * 
- * <Put your student number and login ID here>
+ * Kang Injae <abcinje@gmail.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -172,22 +172,26 @@ int main(int argc, char **argv)
 void eval(char *cmdline) 
 {
 	char *argv[MAXARGS];
-	char buf[MAXLINE];
 	int bg;
 	sigset_t mask;
 	pid_t pid;
 
+	/* initialize mask set and add SIGCHLD to the set */
 	Sigemptyset(&mask);
 	Sigaddset(&mask, SIGCHLD);
 
-	strncpy(buf, cmdline, MAXLINE);
-	bg = parseline(buf, argv);
+	/* parse command line */
+	bg = parseline(cmdline, argv);
+
+	/* return if no arguments are passed */
 	if (argv[0] == NULL)
 		return;
 
+	/* execute a new program if cmdline is not shell builtin */
 	if (!builtin_cmd(argv)) {
 		Sigprocmask(SIG_BLOCK, &mask, NULL);
 
+		/* child process */
 		if ((pid = Fork()) == 0) {
 			Setpgid(0, 0);
 			Sigprocmask(SIG_UNBLOCK, &mask, NULL);
@@ -197,13 +201,18 @@ void eval(char *cmdline)
 			}
 		}
 
+		/* parent process */
 		else {
+			/* foreground */
 			if (!bg)
 				addjob(jobs, pid, FG, cmdline);
+
+			/* background */
 			else {
 				addjob(jobs, pid, BG, cmdline);
 				printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
 			}
+
 			Sigprocmask(SIG_UNBLOCK, &mask, NULL);
 			waitfg(pid);
 		}
@@ -273,21 +282,25 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
+	/* quit */
 	if (!strcmp(argv[0], "quit"))
 		exit(0);
 	
+	/* bg and fg */
 	else if (!strcmp(argv[0], "fg") || !strcmp(argv[0], "bg")) {
 		do_bgfg(argv);
 		return 1;
 	}
 
+	/* jobs */
 	else if (!strcmp(argv[0], "jobs")) {
 		listjobs(jobs);
 		return 1;
 	}
 
+	/* not a builtin command */
 	else
-		return 0; /* not a builtin command */
+		return 0;
 }
 
 /* 
@@ -299,36 +312,43 @@ void do_bgfg(char **argv)
 	int id;
 	struct job_t *job;
 
+	/* no arguments are passed */
 	if (arg == NULL) {
 		printf("%s command requires PID or %%jobid argument\n", argv[0]);
 		return;
 	}
 
-	if (arg[0] == '%' && (id = atoi(arg+1))) {  /* jid */
+	/* control job by jid */
+	if (arg[0] == '%' && (id = atoi(arg+1))) {
 		if (!(job = getjobjid(jobs, id))) {
 			printf("%s: No such job\n", arg);
 			return;
 		}
 	}
 
-	else if (arg[0] != '%' && (id = atoi(arg))) { /* pid */
+	/* control job by pid */
+	else if (arg[0] != '%' && (id = atoi(arg))) {
 		if (!(job = getjobpid(jobs, id))) {
 			printf("(%s): No such process\n", arg);
 			return;
 		}
 	}
 
+	/* an improper argument format */
 	else {
 		printf("%s: argument must be a PID or %%jobid\n", argv[0]);
 		return;
 	}
 
 	if (job->state == ST) {
+		/* ST -> FG */
 		if (!strcmp(argv[0], "fg")) {
 			job->state = FG;
 			Kill(-job->pid, SIGCONT);
 			waitfg(job->pid);
 		}
+
+		/* ST -> BG */
 		else {
 			job->state = BG;
 			printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
@@ -336,6 +356,7 @@ void do_bgfg(char **argv)
 		}
 	}
 
+	/* BG -> FG */
 	else if (job->state == BG) {
 		if (!strcmp(argv[0], "fg")) {
 			job->state = FG;
@@ -353,6 +374,7 @@ void waitfg(pid_t pid)
 	struct job_t *job = getjobpid(jobs, pid);
 
 	if (job)
+		/* spin */
 		while (job->state == FG)
 			sleep(1);
 }
@@ -373,16 +395,20 @@ void sigchld_handler(int sig)
 	pid_t pid;
 	int wstatus;
 
+	/* wait for child process to be terminated or stopped */
 	while ((pid = waitpid(-1, &wstatus, WNOHANG | WUNTRACED)) > 0) {
+		/* terminated normally */
 		if (WIFEXITED(wstatus))
 			deletejob(jobs, pid);
 
+		/* terminated by a signal */
 		else if (WIFSIGNALED(wstatus)) {
 			printf("Job [%d] (%d) terminated by signal %d\n",
 					pid2jid(pid), pid, WTERMSIG(wstatus));
 			deletejob(jobs, pid);
 		}
 
+		/* stopped by a signal */
 		else if (WIFSTOPPED(wstatus)) {
 			printf("Job [%d] (%d) stopped by signal %d\n",
 					pid2jid(pid), pid, WSTOPSIG(wstatus));
@@ -390,6 +416,7 @@ void sigchld_handler(int sig)
 		}
 	}
 
+	/* waitpid error handling */
 	if (pid < 0 && errno != ECHILD)
 		unix_error("waitpid error");
 }
