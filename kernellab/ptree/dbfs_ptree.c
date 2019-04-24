@@ -10,7 +10,6 @@
 MODULE_LICENSE("GPL");
 
 static struct dentry *dir, *input, *ptree;
-static struct task_struct *curr;
 static u32 pid;
 
 static ssize_t ptree_read(struct file *fp, char __user *user_buf,
