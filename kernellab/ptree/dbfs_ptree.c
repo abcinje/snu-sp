@@ -27,7 +27,6 @@ static ssize_t ptree_read(struct file *fp, char __user *user_buf,
 		strncpy(buf, "No such process\n", BUF_SIZE);
 		ret = simple_read_from_buffer(user_buf, count, pos, buf, strlen(buf));
 	}
-	
 
 	else {
 		cursor = BUF_SIZE - 1;
