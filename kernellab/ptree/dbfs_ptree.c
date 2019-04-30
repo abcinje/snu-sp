@@ -12,7 +12,7 @@ MODULE_LICENSE("GPL");
 static struct dentry *dir, *input, *ptree;
 static u32 pid;
 
-static ssize_t ptree_read(struct file *fp, char __user *user_buf,
+static ssize_t read_ptree(struct file *fp, char __user *user_buf,
 				size_t count, loff_t *pos)
 {
 	struct task_struct *task;
@@ -50,7 +50,7 @@ static ssize_t ptree_read(struct file *fp, char __user *user_buf,
 
 static const struct file_operations ptree_fops = {
 	.owner = THIS_MODULE,
-	.read = ptree_read
+	.read = read_ptree
 };
 
 static int __init dbfs_module_init(void)
