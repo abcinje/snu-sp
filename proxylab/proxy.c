@@ -5,7 +5,7 @@
 #define MAX_OBJECT_SIZE 102400
 
 void *handle_client(void *vargp);
-void proxy(int fd);
+void proxy(int client_fd);
 int parse_uri(char *uri, char **host, char **port, char **path);
 
 int main(int argc, char *argv[])
@@ -100,12 +100,12 @@ void proxy(int client_fd)
 		else if (!strcmp(buf, "\r\n"))
 			break;
 	}
-
 	sum = 0;
 	while ((n = Rio_readlineb(&server_rio, buf, MAXBUF))) {
 		Rio_writen(client_fd, buf, n);
 		sum += n;
 	}
+
 	printf("  ← %d %s %ld\n", stat_code, type, sum);
 }
 
@@ -131,3 +131,4 @@ int parse_uri(char *uri, char **host, char **port, char **path)
 
 	return 0;
 }
+
