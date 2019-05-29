@@ -26,11 +26,11 @@ typedef struct {
 	node_t *head;
 } cache_t;
 
-/* buf_t methods */
+/* buf_t APIs */
 void buf_clear(buf_t *buf);
 int buf_fill(buf_t *buf, void *usrbuf, size_t n);
 
-/* cache_t methods */
+/* cache_t APIs */
 void cache_init(cache_t *cache);
 int cache_read(cache_t *cache, char *uri, buf_t *buf);
 void cache_write(cache_t *cache, char *uri, buf_t *buf);
