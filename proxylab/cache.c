@@ -91,16 +91,36 @@ void cache_write(cache_t *cache, char *uri, buf_t *buf)
 	cache_enqueue(cache, node);
 }
 
+node_t *cache_remove_next(cache_t *cache, node_t *node)
+{
+	node_t *temp;
+
+	if (!(temp = node->next))
+		return NULL;
+
+	node->next = temp->next;
+	temp->next = NULL;
+
+	cache->size -= (temp->bufsize + MAXURI);
+	return temp;
+}
+
 int cache_read(cache_t *cache, char *uri, buf_t *buf)
 {
-	node_t *node = cache->head;
+	node_t *prev, *node;
 
+	if (!(prev = cache->head))
+		return -1;
+	
+	node = prev->next;
 	while (node) {
 		if (!strncmp(node->uri, uri, strlen(uri))) {
 			strncpy(buf->buf, node->node_buf, node->bufsize);
 			buf->cnt = node->bufsize;
+			cache_enqueue(cache, cache_remove_next(cache, prev));
 			return node->bufsize;
 		}
+		prev = node;
 		node = node->next;
 	}
 

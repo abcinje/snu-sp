@@ -41,6 +41,7 @@ void cache_enqueue(cache_t *cache, node_t *node);
 node_t *cache_dequeue(cache_t *cache);
 void cache_evict(cache_t *cache, int request);
 void cache_write(cache_t *cache, char *uri, buf_t *buf);
+node_t *cache_remove_next(cache_t *cache, node_t *node);
 int cache_read(cache_t *cache, char *uri, buf_t *buf);
 
 #endif /* __CACHE_H__ */
