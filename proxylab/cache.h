@@ -7,7 +7,12 @@
 #define MAX_CACHE_SIZE 1049000
 #define MAX_OBJECT_SIZE 102400
 
+/* max URI size */
 #define MAXURI 1024
+
+/********************
+ * data structures
+ ********************/
 
 typedef struct {
 	int cnt;

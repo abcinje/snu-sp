@@ -11,6 +11,7 @@ static void *handle_client(void *vargp);
 static void proxy(int client_fd);
 static int parse_uri(char *uri, char **host, char **port, char **path);
 
+/* main routine */
 int main(int argc, char *argv[])
 {
 	int listenfd, *connfdp;
@@ -27,6 +28,7 @@ int main(int argc, char *argv[])
 	cache_init(&cache);
 #endif
 
+	/* listening socket */
 	listenfd = Open_listenfd(argv[1]);
 	while (1) {
 		clientlen = sizeof(clientaddr);
@@ -38,6 +40,7 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+/* client thread */
 void *handle_client(void *vargp)
 {
 	int connfd = *((int *)vargp);
@@ -48,6 +51,7 @@ void *handle_client(void *vargp)
 	return NULL;
 }
 
+/* proxy */
 void proxy(int client_fd)
 {
 	rio_t client_rio, server_rio;
@@ -71,12 +75,16 @@ void proxy(int client_fd)
 #ifdef CACHE_ENABLED
 	strncpy(cache_key, uri, strlen(uri));
 	buf_clear(&cache_buf);
+
+	/* Read the corresponding data from the cache if it exists */
 	if ((n = cache_read(&cache, cache_key, &cache_buf)) >= 0) {
 		Rio_writen(client_fd, cache_buf.buf, n);
 		sum = n;
 		return;
 	}
 #endif
+
+	/* Parse the request line */
 	if (parse_uri(uri, &host, &port, &path))
 		return;
 
@@ -126,12 +134,15 @@ void proxy(int client_fd)
 		Rio_writen(client_fd, buf, n);
 		sum += n;
 #ifdef CACHE_ENABLED
+		/* Do not cache the data
+		   if the cache buffer is too small to store the data */
 		if (buf_fill(&cache_buf, buf, n) < 0)
 			cache_buf_failed = 1;
 #endif
 	}
 
 #ifdef CACHE_ENABLED
+	/* Store the data to the cache buffer */
 	if (!cache_buf_failed)
 		cache_write(&cache, cache_key, &cache_buf);
 #endif
@@ -139,6 +150,7 @@ void proxy(int client_fd)
 	printf("  ← %d %s %ld\n", stat_code, type, sum);
 }
 
+/* URI parser */
 int parse_uri(char *uri, char **host, char **port, char **path)
 {
 	char *scheme = "http://";
