@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-/* client thread */
+/* client-side thread */
 void *handle_client(void *vargp)
 {
 	int connfd = *((int *)vargp);
