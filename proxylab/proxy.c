@@ -1,12 +1,15 @@
+#define CACHE_ENABLED
+
 #include "csapp.h"
+#include "cache.h"
 
-/* Recommended max cache and object sizes */
-#define MAX_CACHE_SIZE 1049000
-#define MAX_OBJECT_SIZE 102400
+#ifdef CACHE_ENABLED
+cache_t cache;
+#endif
 
-void *handle_client(void *vargp);
-void proxy(int client_fd);
-int parse_uri(char *uri, char **host, char **port, char **path);
+static void *handle_client(void *vargp);
+static void proxy(int client_fd);
+static int parse_uri(char *uri, char **host, char **port, char **path);
 
 int main(int argc, char *argv[])
 {
@@ -19,6 +22,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Usage: %s <port>\n", argv[0]);
 		exit(1);
 	}
+
+#ifdef CACHE_ENABLED
+	cache_init(&cache);
+#endif
 
 	listenfd = Open_listenfd(argv[1]);
 	while (1) {
@@ -44,10 +51,15 @@ void *handle_client(void *vargp)
 void proxy(int client_fd)
 {
 	rio_t client_rio, server_rio;
-	char buf[MAXBUF], method[16], uri[MAXBUF], ver[16], type[32];
+	char buf[MAXBUF], method[16], uri[MAXURI], ver[16], type[32];
 	char *host, *port, *path, *temp;
 	int server_fd, stat_code;
 	ssize_t n, sum;
+#ifdef CACHE_ENABLED
+	char cache_key[MAXURI];
+	buf_t cache_buf;
+	int cache_buf_failed = 0;
+#endif
 
 	/* Get a request */
 	Rio_readinitb(&client_rio, client_fd);
@@ -56,8 +68,20 @@ void proxy(int client_fd)
 
 	/* Read the request line */
 	sscanf(buf, "%s %s %s", method, uri, ver);
+#ifdef CACHE_ENABLED
+	strncpy(cache_key, uri, strlen(uri));
+#endif
 	if (parse_uri(uri, &host, &port, &path))
 		return;
+
+#ifdef CACHE_ENABLED
+	buf_clear(&cache_buf);
+	if ((n = cache_read(&cache, cache_key, &cache_buf)) >= 0) {
+		Rio_writen(client_fd, cache_buf.buf, n);
+		sum = n;
+		return;
+	}
+#endif
 
 	/* Connect to the server */
 	server_fd = Open_clientfd(host, port);
@@ -66,7 +90,7 @@ void proxy(int client_fd)
 	printf("%s %s\n", method, uri);
 
 	/* Support only "GET" method */
-	if (strcasecmp(method, "GET")) {
+	if (strncasecmp(method, "GET", 3)) {
 		/* TODO: body */
 		sprintf(buf, "%d %s %s\r\n", 501, "Not Implemented", ver);
 		Rio_writen(client_fd, buf, MAXBUF);
@@ -81,7 +105,7 @@ void proxy(int client_fd)
 	/* Forward the request headers */
 	while ((n = Rio_readlineb(&client_rio, buf, MAXBUF))) {
 		Rio_writen(server_fd, buf, strlen(buf));
-		if (!strcmp(buf, "\r\n"))
+		if (!strncmp(buf, "\r\n", 2))
 			break;
 	}
 
@@ -97,14 +121,23 @@ void proxy(int client_fd)
 			strtok(temp, ";");
 			strncpy(type, temp, strlen(temp));
 		}
-		else if (!strcmp(buf, "\r\n"))
+		else if (!strncmp(buf, "\r\n", 2))
 			break;
 	}
 	sum = 0;
 	while ((n = Rio_readlineb(&server_rio, buf, MAXBUF))) {
 		Rio_writen(client_fd, buf, n);
 		sum += n;
+#ifdef CACHE_ENABLED
+		if (buf_fill(&cache_buf, buf, n) < 0)
+			cache_buf_failed = 1;
+#endif
 	}
+
+#ifdef CACHE_ENABLED
+	if (!cache_buf_failed)
+		cache_write(&cache, cache_key, &cache_buf);
+#endif
 
 	printf("  ← %d %s %ld\n", stat_code, type, sum);
 }
