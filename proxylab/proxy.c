@@ -59,6 +59,7 @@ void proxy(int client_fd)
 	char *host, *port, *path, *temp;
 	int server_fd, stat_code;
 	ssize_t n, sum;
+	
 #ifdef CACHE_ENABLED
 	char cache_key[MAXURI];
 	buf_t cache_buf;
@@ -72,11 +73,11 @@ void proxy(int client_fd)
 
 	/* Read the request line */
 	sscanf(buf, "%s %s %s", method, uri, ver);
+
 #ifdef CACHE_ENABLED
+	/* Read the corresponding data from the cache if it exists */
 	strncpy(cache_key, uri, strlen(uri));
 	buf_clear(&cache_buf);
-
-	/* Read the corresponding data from the cache if it exists */
 	if ((n = cache_read(&cache, cache_key, &cache_buf)) >= 0) {
 		Rio_writen(client_fd, cache_buf.buf, n);
 		sum = n;
@@ -133,6 +134,7 @@ void proxy(int client_fd)
 	while ((n = Rio_readlineb(&server_rio, buf, MAXBUF))) {
 		Rio_writen(client_fd, buf, n);
 		sum += n;
+
 #ifdef CACHE_ENABLED
 		/* Do not cache the data
 		   if the cache buffer is too small to store the data */
