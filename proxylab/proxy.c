@@ -70,11 +70,6 @@ void proxy(int client_fd)
 	sscanf(buf, "%s %s %s", method, uri, ver);
 #ifdef CACHE_ENABLED
 	strncpy(cache_key, uri, strlen(uri));
-#endif
-	if (parse_uri(uri, &host, &port, &path))
-		return;
-
-#ifdef CACHE_ENABLED
 	buf_clear(&cache_buf);
 	if ((n = cache_read(&cache, cache_key, &cache_buf)) >= 0) {
 		Rio_writen(client_fd, cache_buf.buf, n);
@@ -82,6 +77,8 @@ void proxy(int client_fd)
 		return;
 	}
 #endif
+	if (parse_uri(uri, &host, &port, &path))
+		return;
 
 	/* Connect to the server */
 	server_fd = Open_clientfd(host, port);
