@@ -1,22 +1,10 @@
 #include "cache.h"
 
-void buf_clear(buf_t *buf)
-{
-	buf->cnt = 0;
-}
+/*************************
+ * node_t static methods
+ *************************/
 
-int buf_fill(buf_t *buf, void *usrbuf, size_t n)
-{
-	if (buf->cnt + n > MAX_OBJECT_SIZE)
-		return -1;
-
-	strncpy(buf->buf + buf->cnt, usrbuf, n);
-	buf->cnt += n;
-
-	return 0;
-}
-
-node_t *node_new(char *uri, buf_t *buf)
+static node_t *node_new(char *uri, buf_t *buf)
 {
 	node_t *node = Malloc(sizeof(node_t));
 	int size = buf->cnt;
@@ -32,20 +20,18 @@ node_t *node_new(char *uri, buf_t *buf)
 	return node;
 }
 
-void node_delete(node_t *node)
+static void node_delete(node_t *node)
 {
 	free(node->uri);
 	free(node->node_buf);
 	free(node);
 }
 
-void cache_init(cache_t *cache)
-{
-	cache->size = 0;
-	cache->head = NULL;
-}
+/*************************
+ * cache_t static methods
+ *************************/
 
-int cache_isempty(cache_t *cache)
+static int cache_isempty(cache_t *cache)
 {
 	if (cache->head)	
 		return 0;
@@ -53,14 +39,14 @@ int cache_isempty(cache_t *cache)
 		return 1;
 }
 
-void cache_enqueue(cache_t *cache, node_t *node)
+static void cache_enqueue(cache_t *cache, node_t *node)
 {
 	cache->size += (node->bufsize + MAXURI);
 	node->next = cache->head;
 	cache->head = node;
 }
 
-node_t *cache_dequeue(cache_t *cache)
+static node_t *cache_dequeue(cache_t *cache)
 {
 	node_t *node, *temp;
 
@@ -78,20 +64,7 @@ node_t *cache_dequeue(cache_t *cache)
 	return temp;
 }
 
-void cache_evict(cache_t *cache, int request)
-{
-	while (cache->size + (request + MAXURI) > MAX_CACHE_SIZE)
-		node_delete(cache_dequeue(cache));
-}
-
-void cache_write(cache_t *cache, char *uri, buf_t *buf)
-{
-	node_t *node = node_new(uri, buf);
-	cache_evict(cache, node->bufsize);
-	cache_enqueue(cache, node);
-}
-
-node_t *cache_remove_next(cache_t *cache, node_t *node)
+static node_t *cache_remove_next(cache_t *cache, node_t *node)
 {
 	node_t *temp;
 
@@ -103,6 +76,42 @@ node_t *cache_remove_next(cache_t *cache, node_t *node)
 
 	cache->size -= (temp->bufsize + MAXURI);
 	return temp;
+}
+
+static void cache_evict(cache_t *cache, int request)
+{
+	while (cache->size + (request + MAXURI) > MAX_CACHE_SIZE)
+		node_delete(cache_dequeue(cache));
+}
+
+/********************
+ * buf_t APIs
+ ********************/
+
+void buf_clear(buf_t *buf)
+{
+	buf->cnt = 0;
+}
+
+int buf_fill(buf_t *buf, void *usrbuf, size_t n)
+{
+	if (buf->cnt + n > MAX_OBJECT_SIZE)
+		return -1;
+
+	strncpy(buf->buf + buf->cnt, usrbuf, n);
+	buf->cnt += n;
+
+	return 0;
+}
+
+/********************
+ * cache_t APIs
+ ********************/
+
+void cache_init(cache_t *cache)
+{
+	cache->size = 0;
+	cache->head = NULL;
 }
 
 int cache_read(cache_t *cache, char *uri, buf_t *buf)
@@ -125,5 +134,12 @@ int cache_read(cache_t *cache, char *uri, buf_t *buf)
 	}
 
 	return -1;
+}
+
+void cache_write(cache_t *cache, char *uri, buf_t *buf)
+{
+	node_t *node = node_new(uri, buf);
+	cache_evict(cache, node->bufsize);
+	cache_enqueue(cache, node);
 }
 
