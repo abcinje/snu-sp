@@ -21,7 +21,23 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N]);
  */
 char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N])
-{	
+{
+	int i, j, k, tmp;
+
+	if (M == 61 && N == 67) {
+		for (k = 0; k < M/8; k++)
+			for (i = 0; i < N; i++)
+				for (j = 0; j < 8; j++) {
+					tmp = A[i][j + 8*k];
+					B[j + 8*k][i] = tmp;
+				}
+
+		for (i = 0; i < N; i++)
+			for (j = 0; j < M%8; j++) {
+				tmp = A[i][j + 8*k];
+				B[j + 8*k][i] = tmp;
+			}
+	}
 }
 
 /* 
