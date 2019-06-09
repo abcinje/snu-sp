@@ -7,10 +7,12 @@
  * A transpose function is evaluated by counting the number of misses
  * on a 1KB direct mapped cache with a block size of 32 bytes.
  */ 
-#include <stdio.h>
 #include "cachelab.h"
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
 int is_transpose(int M, int N, int A[N][M], int B[M][N]);
+void trans_stride(int M, int N, int A[N][M], int B[M][N], int stride);
 
 /* 
  * transpose_submit - This is the solution transpose function that you
@@ -22,22 +24,11 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N]);
 char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N])
 {
-	int i, j, k, tmp;
+	if (M == 32 && N == 32)
+		trans_stride(M, N, A, B, 8);
 
-	if (M == 61 && N == 67) {
-		for (k = 0; k < M/8; k++)
-			for (i = 0; i < N; i++)
-				for (j = 0; j < 8; j++) {
-					tmp = A[i][j + 8*k];
-					B[j + 8*k][i] = tmp;
-				}
-
-		for (i = 0; i < N; i++)
-			for (j = 0; j < M%8; j++) {
-				tmp = A[i][j + 8*k];
-				B[j + 8*k][i] = tmp;
-			}
-	}
+	if (M == 61 && N == 67)
+		trans_stride(M, N, A, B, 16);
 }
 
 /* 
@@ -94,5 +85,24 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N])
 		}
 	}
 	return 1;
+}
+
+void trans_stride(int M, int N, int A[N][M], int B[M][N], int stride)
+{
+	int i, j, k, l, tmp;
+
+	for (i = 0; i < M; i += stride)
+		for (j = 0; j < N; j += stride)
+			for (k = j; k < MIN(j + stride, N); k++) {
+				for (l = i; l < MIN(i + stride, M); l++) {
+					if (k == l)
+						tmp = A[k][l];
+					else
+						B[l][k] = A[k][l];
+				}
+
+				if (i == j)
+					B[k][k] = tmp;
+			}
 }
 
