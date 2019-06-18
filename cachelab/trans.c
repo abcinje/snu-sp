@@ -91,6 +91,12 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N])
 	return 1;
 }
 
+/*
+ * trans_stride - This transpose function divides A into square
+ *     submatrices of order _stride_ and transposes each submatrix.
+ *     By checking ranges of rows and columns, this function supports
+ *     matrices with arbitrary dimensions.
+ */
 void trans_stride(int M, int N, int A[N][M], int B[M][N], int stride)
 {
 	int i, j, k, l, tmp;
@@ -110,9 +116,11 @@ void trans_stride(int M, int N, int A[N][M], int B[M][N], int stride)
 			}
 }
 
+/*
+ * trans_64x64 - This optimized transpose function is for 64x64 matrices.
+ */
 #define A(r,c) (A[i+(r)][j+(c)])
 #define B(r,c) (B[j+(r)][i+(c)])
-
 void trans_64x64(int M, int N, int A[N][M], int B[M][N])
 {
 	int i, j, k;
