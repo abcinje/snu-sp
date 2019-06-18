@@ -13,6 +13,7 @@
 
 int is_transpose(int M, int N, int A[N][M], int B[M][N]);
 void trans_stride(int M, int N, int A[N][M], int B[M][N], int stride);
+void trans_64x64(int M, int N, int A[N][M], int B[M][N]);
 
 /* 
  * transpose_submit - This is the solution transpose function that you
@@ -26,6 +27,9 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N])
 {
 	if (M == 32 && N == 32)
 		trans_stride(M, N, A, B, 8);
+
+	if (M == 64 && N == 64)
+		trans_64x64(M, N, A, B);
 
 	if (M == 61 && N == 67)
 		trans_stride(M, N, A, B, 16);
@@ -104,5 +108,62 @@ void trans_stride(int M, int N, int A[N][M], int B[M][N], int stride)
 				if (i == j)
 					B[k][k] = tmp;
 			}
+}
+
+#define A(r,c) (A[i+(r)][j+(c)])
+#define B(r,c) (B[j+(r)][i+(c)])
+
+void trans_64x64(int M, int N, int A[N][M], int B[M][N])
+{
+	int i, j, k;
+	int r0, r1, r2, r3, r4, r5, r6, r7;
+
+	for (i = 0; i < 64; i += 8)
+		for (j = 0; j < 64; j += 8) {
+			for (k = 0; k < 4; k++) {
+				r0 = A(k, 0);
+				r1 = A(k, 1);
+				r2 = A(k, 2);
+				r3 = A(k, 3);
+				r4 = A(k, 4);
+				r5 = A(k, 5);
+				r6 = A(k, 6);
+				r7 = A(k, 7);
+
+				B(0, k+0) = r0;
+				B(1, k+0) = r1;
+				B(2, k+0) = r2;
+				B(3, k+0) = r3;
+				B(0, k+4) = r7;
+				B(1, k+4) = r6;
+				B(2, k+4) = r5;
+				B(3, k+4) = r4;
+			}
+
+			for (k = 0; k < 4; k++) {
+				r0 = A(4, 3-k);
+				r1 = A(5, 3-k);
+				r2 = A(6, 3-k);
+				r3 = A(7, 3-k);
+				r4 = A(4, k+4);
+				r5 = A(5, k+4);
+				r6 = A(6, k+4);
+				r7 = A(7, k+4);
+
+				B(k+4, 0) = B(3-k, 4);
+				B(k+4, 1) = B(3-k, 5);
+				B(k+4, 2) = B(3-k, 6);
+				B(k+4, 3) = B(3-k, 7);
+
+				B(3-k, 4) = r0;
+				B(3-k, 5) = r1;
+				B(3-k, 6) = r2;
+				B(3-k, 7) = r3;
+				B(k+4, 4) = r4;
+				B(k+4, 5) = r5;
+				B(k+4, 6) = r6;
+				B(k+4, 7) = r7;
+			}
+		}
 }
 
