@@ -153,6 +153,9 @@ int main(int argc, char *argv[])
 		free(cache[i].lines);
 	free(cache);
 
+	/* Close the tracefile */
+	fclose(fp);
+
 	return 0;
 }
 
